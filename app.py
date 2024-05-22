@@ -26,7 +26,7 @@ class VideoProcessingApp:
         self.status_label.pack(pady=10)
 
     def select_video(self):
-        self.video_path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4;*.avi;*.mov")])
+        self.video_path = filedialog.askopenfilename()
         if self.video_path:
             self.status_label.config(text=f"Selected video: {self.video_path}")
         else:
