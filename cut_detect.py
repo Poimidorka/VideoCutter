@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from moviepy.editor import VideoFileClip
+from moviepy.editor import *
 from pydub import AudioSegment
 import matplotlib.pyplot as plt
 from pydub.silence import detect_nonsilent
@@ -30,12 +30,12 @@ def detect_first_brightness_increase(video_path, threshold=30):
     return None
 
 def cut_video(video_path, start_time, output_path):
-    print(start_time)
-    print(video_path)
     video = VideoFileClip(video_path).subclip(start_time)
-    video.write_videofile(output_path, codec="libx264")
+    audio = AudioFileClip(video_path).subclip(start_time)
+    video.audio = audio
+    video.write_videofile(output_path, codec="libx264", audio_codec="aac")
 
-def detect_first_loud_noise(audio_path, threshold=0.3, chunk_size=10):
+def detect_first_loud_noise(audio_path, threshold=0.3):
     audio = AudioSegment.from_file(audio_path)
     samples = np.array(audio.get_array_of_samples())
     max_value = np.max(np.abs(samples))
@@ -43,7 +43,8 @@ def detect_first_loud_noise(audio_path, threshold=0.3, chunk_size=10):
 
     for i, sample in enumerate(samples):
         if abs(sample) > threshold:
-            return i / audio.frame_rate
+            print(i)
+            return i / len(samples) * audio.__len__() / 1000
     return None
 
 
@@ -65,11 +66,11 @@ def plot_audio(audio_path):
     plt.ylabel("dB")
     plt.show()
 
-def main(video_path, output_path, brightness_threshold=10, loud_noise_threshold=0.3, chunk_size=10, cut_start_time=None):
+def main(video_path, output_path, brightness_threshold=10, loud_noise_threshold=0.3, cut_start_time=None):
     audio_path = "temp_audio.wav"
     extract_audio_from_video(video_path, audio_path)
     plot_audio(audio_path)
-    loud_noise_timestamp = detect_first_loud_noise(audio_path, loud_noise_threshold, chunk_size)
+    loud_noise_timestamp = detect_first_loud_noise(audio_path, loud_noise_threshold)
     os.remove(audio_path)
     if loud_noise_timestamp is None:
         raise ValueError("No loud noise detected in the audio.")
