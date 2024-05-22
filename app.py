@@ -1,4 +1,4 @@
-import cut_detect
+from cut_detect import main
 import tkinter as tk
 from tkinter import filedialog, messagebox
 

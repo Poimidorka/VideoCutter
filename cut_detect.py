@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from moviepy.editor import VideoFileClip
 from pydub import AudioSegment
+import matplotlib.pyplot as plt
 from pydub.silence import detect_nonsilent
 import os
 
@@ -34,26 +35,40 @@ def cut_video(video_path, start_time, output_path):
     video = VideoFileClip(video_path).subclip(start_time)
     video.write_videofile(output_path, codec="libx264")
 
-def detect_first_loud_noise(audio_path, threshold=-20, chunk_size=10):
+def detect_first_loud_noise(audio_path, threshold=0.3, chunk_size=10):
     audio = AudioSegment.from_file(audio_path)
-    nonsilent_ranges = detect_nonsilent(audio, min_silence_len=chunk_size, silence_thresh=threshold)
-    if nonsilent_ranges:
-        return nonsilent_ranges[0][0] / 1000.0
+    samples = np.array(audio.get_array_of_samples())
+    max_value = np.max(np.abs(samples))
+    samples = samples.astype(np.float32) / max_value
+
+    for i, sample in enumerate(samples):
+        if abs(sample) > threshold:
+            return i / audio.frame_rate
     return None
+
 
 def extract_audio_from_video(video_path, audio_path):
     video = VideoFileClip(video_path)
     audio = video.audio
     audio.write_audiofile(audio_path)
 
-def main(video_path, output_path, brightness_threshold=10, loud_noise_threshold=-20, chunk_size=10, cut_start_time=None):
-    brightness_timestamp = detect_first_brightness_increase(video_path, brightness_threshold)
-    if brightness_timestamp is None:
-        raise ValueError("No brightness increase detected in the video.")
-    print(f"First brightness increase detected at: {brightness_timestamp} seconds")
-    
+def plot_audio(audio_path):
+    audio = AudioSegment.from_file(audio_path)
+    samples = np.array(audio.get_array_of_samples())
+    max_value = np.max(np.abs(samples))
+    samples = samples.astype(np.float32) / max_value
+
+    plt.figure(figsize=(14, 7))
+    plt.plot(samples)
+    plt.title("Audio dB Values")
+    plt.xlabel("Sample")
+    plt.ylabel("dB")
+    plt.show()
+
+def main(video_path, output_path, brightness_threshold=10, loud_noise_threshold=0.3, chunk_size=10, cut_start_time=None):
     audio_path = "temp_audio.wav"
     extract_audio_from_video(video_path, audio_path)
+    plot_audio(audio_path)
     loud_noise_timestamp = detect_first_loud_noise(audio_path, loud_noise_threshold, chunk_size)
     os.remove(audio_path)
     if loud_noise_timestamp is None:
@@ -61,7 +76,6 @@ def main(video_path, output_path, brightness_threshold=10, loud_noise_threshold=
     print(f"First loud noise detected at: {loud_noise_timestamp} seconds")
     
     if cut_start_time is None:
-        cut_start_time = brightness_timestamp
+        cut_start_time = loud_noise_timestamp
     cut_video(video_path, cut_start_time, output_path)
     print(f"Video saved after cutting at: {output_path}")
-
