@@ -46,20 +46,22 @@ def extract_audio_from_video(video_path, audio_path):
     audio = video.audio
     audio.write_audiofile(audio_path)
 
-def main(video_path, brightness_threshold=10, loud_noise_threshold=-20, chunk_size=10, cut_start_time=None):
+def main(video_path, output_path, brightness_threshold=10, loud_noise_threshold=-20, chunk_size=10, cut_start_time=None):
     brightness_timestamp = detect_first_brightness_increase(video_path, brightness_threshold)
+    if brightness_timestamp is None:
+        raise ValueError("No brightness increase detected in the video.")
     print(f"First brightness increase detected at: {brightness_timestamp} seconds")
+    
     audio_path = "temp_audio.wav"
     extract_audio_from_video(video_path, audio_path)
     loud_noise_timestamp = detect_first_loud_noise(audio_path, loud_noise_threshold, chunk_size)
-    print(f"First loud noise detected at: {loud_noise_timestamp} seconds")
     os.remove(audio_path)
+    if loud_noise_timestamp is None:
+        raise ValueError("No loud noise detected in the audio.")
+    print(f"First loud noise detected at: {loud_noise_timestamp} seconds")
+    
     if cut_start_time is None:
         cut_start_time = brightness_timestamp
-    output_path = "output_video2.mp4"
     cut_video(video_path, cut_start_time, output_path)
     print(f"Video saved after cutting at: {output_path}")
 
-if __name__ == "__main__":
-    video_file_path = "vid2.mp4"
-    main(video_file_path)
